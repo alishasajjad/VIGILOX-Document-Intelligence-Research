@@ -44,6 +44,7 @@ class EvidenceValidator:
             "ISSUE DATE",
             "DATE ISSUED",
             "PRINT DATE",
+            "PRINTDATE",
         ],
     }
 
