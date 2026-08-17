@@ -1,5 +1,7 @@
 import json
+import os
 
+import groq
 from groq import Groq
 
 from src.schemas import DocumentExtraction
@@ -8,22 +10,51 @@ from src.schemas import DocumentExtraction
 class ExtractionService:
 
     def __init__(self):
-        self.client = Groq()
+
+        api_key = os.getenv("GROQ_API_KEY")
+
+        if not api_key:
+            raise RuntimeError(
+                "GROQ_API_KEY was not found. "
+                "Make sure .env is loaded before "
+                "creating ExtractionService."
+            )
+
+        self.client = Groq(
+            api_key=api_key
+        )
+
+    # ======================================================
+    # EXTRACT STRUCTURED DOCUMENT DATA
+    # ======================================================
 
     def extract(
         self,
         ocr_lines: list[dict],
     ) -> DocumentExtraction:
 
-        llm_input = []
+        # ==================================================
+        # PREPARE OCR EVIDENCE FOR LLM
+        # ==================================================
+
+        llm_input: list[dict] = []
 
         for index, line in enumerate(ocr_lines):
 
-            llm_input.append({
-                "line_id": f"L{index}",
-                "text": line["text"],
-                "bbox": line["bbox"],
-            })
+            llm_input.append(
+                {
+                    "line_id": f"L{index}",
+                    "text": line["text"],
+                    "bbox": line["bbox"],
+                }
+            )
+
+        # IMPORTANT:
+        # OCR confidence is intentionally NOT sent
+        # to the LLM.
+        #
+        # Confidence is calculated separately after
+        # evidence validation.
 
         document_text = json.dumps(
             llm_input,
@@ -31,6 +62,9 @@ class ExtractionService:
             ensure_ascii=False,
         )
 
+        # ==================================================
+        # STRICT EXTRACTION SYSTEM PROMPT
+        # ==================================================
 
         system_prompt = """
 You are a strict document information extraction system.
@@ -390,7 +424,7 @@ the same text or number appears somewhere in OCR.
 The OCR evidence must also support the semantic meaning
 of the field whenever that meaning requires context.
 
-Examples:
+Example:
 
 "2301"
 
@@ -404,8 +438,14 @@ Similarly:
 
 "01/01/2025"
 
-does NOT automatically mean issue_date unless labels such as
-PRINTDATE, PRINT DATE, ISSUED, or ISSUE DATE establish its meaning.
+does NOT automatically mean issue_date unless labels such as:
+
+PRINTDATE
+PRINT DATE
+ISSUED
+ISSUE DATE
+
+establish its meaning.
 
 
 23. PREFER NULL OVER GUESSING:
@@ -430,42 +470,312 @@ missing fields.
 
 Only use document context when it clearly establishes
 the meaning of OCR evidence.
+
+
+25. JSON NULL RULE:
+
+When a field is missing or unsupported,
+the value MUST be JSON null.
+
+Correct:
+
+"value": null
+
+Incorrect:
+
+"value": "null"
+
+Incorrect:
+
+"value": "None"
+
+Incorrect:
+
+"value": ""
+
+Never represent a missing value using a string.
+
+
+26. NULL FIELD SOURCE RULE:
+
+If value is null:
+
+source_line_ids MUST be []
+
+Correct:
+
+"value": null
+"source_line_ids": []
+
+Incorrect:
+
+"value": null
+"source_line_ids": [""]
+
+Incorrect:
+
+"value": null
+"source_line_ids": ["L2"]
+
+If value is NOT null:
+
+source_line_ids must contain at least one valid OCR line ID.
+
+Never use an empty string as a source_line_id.
+
+
+27. TOP-LEVEL FIELD STRUCTURE RULE:
+
+Every document field must appear exactly once as a direct
+top-level property of the output document.
+
+The required top-level fields are:
+
+document_type
+full_name
+licence_number
+id_number
+expiry_date
+date_of_birth
+issue_date
+issuer
+
+Never nest one document field inside another field.
+
+Incorrect:
+
+expiry_date:
+    value = null
+    date_of_birth:
+        value = null
+
+Correct:
+
+expiry_date:
+    value = null
+    source_line_ids = []
+
+date_of_birth:
+    value = null
+    source_line_ids = []
+
+Even when a field is missing, its field object must still
+appear in the correct top-level position with:
+
+value = null
+source_line_ids = []
+
+
+28. COMPLETE OUTPUT RULE:
+
+Always return all required schema fields.
+
+Never omit:
+
+full_name
+licence_number
+id_number
+expiry_date
+date_of_birth
+issue_date
+issuer
+
+If a field is unsupported, return:
+
+value = null
+source_line_ids = []
+
+Do not omit the field.
+Do not place it inside another field.
 """
 
-        response = self.client.chat.completions.create(
+        # ==================================================
+        # USER PROMPT
+        # ==================================================
 
-            model="openai/gpt-oss-20b",
+        user_prompt = f"""
+Extract structured information from the OCR evidence below.
 
-            messages=[
-                {
-                    "role": "system",
-                    "content": system_prompt,
-                },
-                {
-                    "role": "user",
-                    "content": document_text,
-                },
-            ],
+Follow every rule from the system prompt.
 
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "document_extraction",
-                    "strict": True,
-                    "schema": DocumentExtraction.model_json_schema(),
-                },
-            },
-        )
+Use ONLY the OCR lines provided below.
 
-        content = response.choices[0].message.content
+Do not invent missing information.
 
-        if not content:
-            raise ValueError(
-                "Groq returned empty structured output."
+Do not use information that is not present in the OCR evidence.
+
+Return every required schema field exactly once.
+
+Keep every document field at the top level.
+
+For unsupported fields use:
+value = null
+source_line_ids = []
+
+OCR INPUT:
+
+{document_text}
+"""
+
+        # ==================================================
+        # GROQ STRUCTURED OUTPUT WITH RETRY
+        # ==================================================
+
+        max_attempts = 3
+
+        response = None
+
+        for attempt in range(
+            1,
+            max_attempts + 1,
+        ):
+
+            try:
+
+                response = (
+                    self.client
+                    .chat
+                    .completions
+                    .create(
+                        model="openai/gpt-oss-20b",
+
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": system_prompt,
+                            },
+                            {
+                                "role": "user",
+                                "content": user_prompt,
+                            },
+                        ],
+
+                        # This task is constrained
+                        # OCR-to-schema extraction.
+                        reasoning_effort="low",
+
+                        # We do not need model reasoning
+                        # content in the response.
+                        include_reasoning=False,
+
+                        # Gives enough room for a valid
+                        # structured JSON response.
+                        max_completion_tokens=4096,
+
+                        response_format={
+                            "type": "json_schema",
+
+                            "json_schema": {
+                                "name":
+                                    "document_extraction",
+
+                                "strict":
+                                    True,
+
+                                "schema": (
+                                    DocumentExtraction
+                                    .model_json_schema()
+                                ),
+                            },
+                        },
+                    )
+                )
+
+                # Successful structured response.
+                break
+
+            except groq.BadRequestError as exc:
+
+                error_text = str(exc)
+
+                # ------------------------------------------
+                # RETRY ONLY STRUCTURED-OUTPUT GENERATION
+                # FAILURES
+                # ------------------------------------------
+
+                is_json_generation_error = (
+                    "json_validate_failed"
+                    in error_text
+                    or
+                    "Failed to generate JSON"
+                    in error_text
+                    or
+                    "Generated JSON does not match"
+                    in error_text
+                )
+
+                # Genuine unrelated API errors should
+                # immediately propagate.
+                if not is_json_generation_error:
+                    raise
+
+                # Final failed attempt.
+                if attempt == max_attempts:
+                    raise RuntimeError(
+                        "Groq failed to generate a valid "
+                        "structured document after "
+                        f"{max_attempts} attempts."
+                    ) from exc
+
+                print(
+                    f"[RETRY] Groq structured output "
+                    f"generation failed "
+                    f"(attempt {attempt}/{max_attempts}). "
+                    f"Retrying..."
+                )
+
+        # ==================================================
+        # SAFETY CHECK
+        # ==================================================
+
+        if response is None:
+
+            raise RuntimeError(
+                "Groq failed to produce "
+                "a structured response."
             )
 
-        raw_data = json.loads(content)
+        # ==================================================
+        # READ STRUCTURED RESPONSE
+        # ==================================================
 
-        return DocumentExtraction.model_validate(
-            raw_data
+        content = (
+            response
+            .choices[0]
+            .message
+            .content
+        )
+
+        if not content:
+
+            raise ValueError(
+                "Groq returned empty "
+                "structured output."
+            )
+
+        # ==================================================
+        # PARSE JSON
+        # ==================================================
+
+        try:
+
+            raw_data = json.loads(
+                content
+            )
+
+        except json.JSONDecodeError as exc:
+
+            raise ValueError(
+                "Groq returned invalid JSON."
+            ) from exc
+
+        # ==================================================
+        # FINAL DETERMINISTIC PYDANTIC VALIDATION
+        # ==================================================
+
+        return (
+            DocumentExtraction
+            .model_validate(
+                raw_data
+            )
         )
