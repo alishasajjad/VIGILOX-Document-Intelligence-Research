@@ -1,8 +1,14 @@
 import re
 import unicodedata
-from datetime import datetime, date
 
-from src.schemas import DocumentExtraction
+from datetime import (
+    date,
+    datetime,
+)
+
+from src.schemas import (
+    DocumentExtraction,
+)
 
 
 class EvidenceValidator:
@@ -57,33 +63,24 @@ class EvidenceValidator:
         self,
         text: str,
     ) -> str:
-        """
-        Normalize text so formatting differences do not
-        cause false mismatches.
-
-        Examples:
-
-        M.GREEN
-        M GREEN
-        m.green
-
-        all become:
-
-        MGREEN
-        """
 
         text = unicodedata.normalize(
             "NFKD",
             text,
         )
 
+
         text = "".join(
             char
             for char in text
-            if not unicodedata.combining(char)
+            if not unicodedata.combining(
+                char
+            )
         )
 
+
         text = text.upper()
+
 
         text = "".join(
             char
@@ -91,48 +88,176 @@ class EvidenceValidator:
             if char.isalnum()
         )
 
+
         return text
 
 
     # ======================================================
-    # SOURCE LINE ID -> OCR INDEX
+    # BUILD OCR EVIDENCE LOOKUP
+    # PHASE 7C.2
     # ======================================================
 
-    def _line_id_to_index(
+    def _build_ocr_lookup(
         self,
-        line_id: str,
-    ) -> int | None:
-        """
-        Convert:
+        ocr_lines: list[dict],
+    ) -> dict[str, dict]:
 
-        L0 -> 0
-        L5 -> 5
-        L12 -> 12
+        # ==================================================
+        # EXPLICIT PROVENANCE LOOKUP
+        # ==================================================
+        #
+        # New OCR records contain:
+        #
+        # {
+        #     "line_id": "L15",
+        #     "text": "ISSUED BY TX DPS",
+        #     "confidence": 0.99,
+        #     "bbox": [...]
+        # }
+        #
+        # EvidenceValidator now resolves evidence directly
+        # through this explicit ID instead of converting:
+        #
+        # L15 -> integer 15 -> ocr_lines[15]
+        #
+        # That removes positional coupling from the
+        # provenance chain.
+        # ==================================================
 
-        Invalid examples:
+        lookup: dict[str, dict] = {}
 
-        5
-        LINE5
-        LABC
-        L-1
-        """
 
-        if not isinstance(line_id, str):
-            return None
-
-        if not re.fullmatch(
-            r"L\d+",
-            line_id,
+        for (
+            index,
+            line,
+        ) in enumerate(
+            ocr_lines
         ):
-            return None
 
-        try:
-            return int(
-                line_id[1:]
+            # ==============================================
+            # OCR RECORD STRUCTURE
+            # ==============================================
+
+            if not isinstance(
+                line,
+                dict,
+            ):
+
+                raise ValueError(
+                    (
+                        "Invalid OCR line at "
+                        f"index {index}. "
+                        "Expected a dictionary."
+                    )
+                )
+
+
+            if (
+                "text"
+                not in line
+            ):
+
+                raise ValueError(
+                    (
+                        "OCR line at "
+                        f"index {index} "
+                        "is missing text."
+                    )
+                )
+
+
+            # ==============================================
+            # EXPLICIT LINE ID
+            # ==============================================
+
+            line_id = (
+                line.get(
+                    "line_id"
+                )
             )
 
-        except ValueError:
-            return None
+
+            # ==============================================
+            # LEGACY BACKWARD COMPATIBILITY
+            # ==============================================
+            #
+            # Older persisted documents and older test
+            # fixtures may not contain line_id.
+            #
+            # They retain the historical zero-based
+            # positional convention:
+            #
+            # index 0 -> L0
+            # index 1 -> L1
+            #
+            # New OCRService records always contain their
+            # explicit line_id.
+            # ==============================================
+
+            if (
+                line_id is None
+                or str(
+                    line_id
+                ).strip()
+                == ""
+            ):
+
+                line_id = (
+                    f"L{index}"
+                )
+
+
+            line_id = (
+                str(
+                    line_id
+                )
+                .strip()
+            )
+
+
+            # ==============================================
+            # LINE ID FORMAT VALIDATION
+            # ==============================================
+
+            if not re.fullmatch(
+                r"L\d+",
+                line_id,
+            ):
+
+                raise ValueError(
+                    (
+                        "Invalid OCR line_id "
+                        f"at index {index}: "
+                        f"{line_id}. "
+                        "Expected format "
+                        "L0, L1, L2, ..."
+                    )
+                )
+
+
+            # ==============================================
+            # DUPLICATE LINE ID PROTECTION
+            # ==============================================
+
+            if (
+                line_id
+                in lookup
+            ):
+
+                raise ValueError(
+                    (
+                        "Duplicate OCR line_id "
+                        f"detected: {line_id}."
+                    )
+                )
+
+
+            lookup[
+                line_id
+            ] = line
+
+
+        return lookup
 
 
     # ======================================================
@@ -143,18 +268,6 @@ class EvidenceValidator:
         self,
         text: str,
     ) -> list[str]:
-        """
-        Extract possible date strings from OCR text.
-
-        Supported examples:
-
-        24 MAR 2021
-        24 March 2021
-        24/03/2021
-        24/03/21
-        24-03-2021
-        2021-03-24
-        """
 
         patterns = [
 
@@ -171,7 +284,9 @@ class EvidenceValidator:
             r"\b\d{4}[/-]\d{1,2}[/-]\d{1,2}\b",
         ]
 
+
         candidates: list[str] = []
+
 
         for pattern in patterns:
 
@@ -181,35 +296,26 @@ class EvidenceValidator:
                 flags=re.IGNORECASE,
             )
 
+
             candidates.extend(
                 matches
             )
+
 
         return candidates
 
 
     # ======================================================
-    # CONVERT POSSIBLE DATE FORMATS
+    # POSSIBLE DATE PARSING
     # ======================================================
 
     def _possible_dates(
         self,
         value: str,
     ) -> set[date]:
-        """
-        Convert a date string into every reasonable
-        interpretation we support.
-
-        This helps compare:
-
-        2021-03-24
-
-        with:
-
-        24 MAR 2021
-        """
 
         possible: set[date] = set()
+
 
         formats = [
 
@@ -224,41 +330,50 @@ class EvidenceValidator:
             # DD/MM/YYYY
             "%d/%m/%Y",
             "%d/%m/%y",
-
             "%d-%m-%Y",
             "%d-%m-%y",
 
-            # US MM/DD/YYYY
+            # MM/DD/YYYY
             "%m/%d/%Y",
             "%m/%d/%y",
-
             "%m-%d-%Y",
             "%m-%d-%y",
         ]
 
-        value = value.strip()
+
+        value = (
+            value.strip()
+        )
+
 
         for date_format in formats:
 
             try:
 
-                parsed = datetime.strptime(
-                    value,
-                    date_format,
-                ).date()
+                parsed = (
+                    datetime.strptime(
+                        value,
+                        date_format,
+                    )
+                    .date()
+                )
+
 
                 possible.add(
                     parsed
                 )
 
+
             except ValueError:
+
                 continue
+
 
         return possible
 
 
     # ======================================================
-    # DATE SEMANTIC MATCH
+    # DATE SEMANTIC MATCHING
     # ======================================================
 
     def _date_is_supported(
@@ -266,43 +381,43 @@ class EvidenceValidator:
         extracted_value: str,
         evidence_texts: list[str],
     ) -> bool:
-        """
-        Example:
 
-        extracted:
-        2021-03-24
-
-        OCR evidence:
-        EXPIRES
-        24 MAR 2021
-
-        Result:
-        True
-        """
-
-        target_dates = self._possible_dates(
-            extracted_value
+        target_dates = (
+            self._possible_dates(
+                extracted_value
+            )
         )
 
+
         if not target_dates:
+
             return False
+
 
         for evidence in evidence_texts:
 
-            candidates = self._extract_date_candidates(
-                evidence
+            candidates = (
+                self._extract_date_candidates(
+                    evidence
+                )
             )
+
 
             for candidate in candidates:
 
-                evidence_dates = self._possible_dates(
-                    candidate
+                evidence_dates = (
+                    self._possible_dates(
+                        candidate
+                    )
                 )
+
 
                 if target_dates.intersection(
                     evidence_dates
                 ):
+
                     return True
+
 
         return False
 
@@ -316,23 +431,27 @@ class EvidenceValidator:
         extracted_value: str,
         evidence_texts: list[str],
     ) -> bool:
-        """
-        Check whether extracted text can actually be
-        found in the referenced OCR evidence.
-        """
 
-        normalized_value = self._normalize_text(
-            extracted_value
-        )
-
-        normalized_evidence = self._normalize_text(
-            " ".join(
-                evidence_texts
+        normalized_value = (
+            self._normalize_text(
+                extracted_value
             )
         )
 
+
+        normalized_evidence = (
+            self._normalize_text(
+                " ".join(
+                    evidence_texts
+                )
+            )
+        )
+
+
         if not normalized_value:
+
             return False
+
 
         return (
             normalized_value
@@ -349,47 +468,41 @@ class EvidenceValidator:
         field_name: str,
         evidence_texts: list[str],
     ) -> bool:
-        """
-        For date fields, check that relevant context
-        such as EXPIRES or DOB is also referenced.
 
-        Example:
-
-        expiry_date:
-            L4 -> EXPIRES
-            L5 -> 24 MAR 2021
-
-        passes.
-
-        But only:
-
-            L5 -> 24 MAR 2021
-
-        should produce CONTEXT_MISSING.
-        """
-
-        expected_labels = self.FIELD_LABELS.get(
-            field_name
+        expected_labels = (
+            self.FIELD_LABELS.get(
+                field_name
+            )
         )
 
-        # Fields such as name, licence number,
-        # ID number and issuer do not currently
-        # require an explicit label.
+
+        # Name, licence number, ID number
+        # and issuer currently do not require
+        # an explicit label.
         if not expected_labels:
+
             return True
 
-        combined = " ".join(
-            evidence_texts
-        ).upper()
+
+        combined = (
+            " ".join(
+                evidence_texts
+            )
+            .upper()
+        )
+
 
         return any(
-            label in combined
-            for label in expected_labels
+            label
+            in combined
+
+            for label
+            in expected_labels
         )
 
 
     # ======================================================
-    # MAIN VALIDATION
+    # MAIN VALIDATOR
     # ======================================================
 
     def validate(
@@ -397,31 +510,25 @@ class EvidenceValidator:
         extraction: DocumentExtraction,
         ocr_lines: list[dict],
     ) -> list[str]:
-        """
-        Evidence Validation V1 + V2.
-
-        V1:
-        - Does evidence exist?
-        - Are source line IDs valid?
-
-        V2:
-        - Does referenced OCR text support the value?
-        - Does expected semantic context exist?
-        """
 
         flags: list[str] = []
 
 
         # ==================================================
-        # VALID LINE IDS
+        # BUILD EXPLICIT OCR EVIDENCE LOOKUP
+        # PHASE 7C.2
         # ==================================================
 
-        valid_line_ids = {
-            f"L{index}"
-            for index in range(
-                len(ocr_lines)
+        ocr_lookup = (
+            self._build_ocr_lookup(
+                ocr_lines
             )
-        }
+        )
+
+
+        valid_line_ids = set(
+            ocr_lookup.keys()
+        )
 
 
         # ==================================================
@@ -457,34 +564,41 @@ class EvidenceValidator:
         # VALIDATE EACH FIELD
         # ==================================================
 
-        for field_name, field in fields.items():
+        for (
+            field_name,
+            field,
+        ) in fields.items():
 
 
-            # ----------------------------------------------
-            # FIELD WAS NOT EXTRACTED
-            # ----------------------------------------------
+            # ==============================================
+            # FIELD NOT EXTRACTED
+            # ==============================================
 
             if field.value is None:
+
                 continue
 
 
-            # ----------------------------------------------
+            # ==============================================
             # V1 — VALUE EXISTS BUT NO EVIDENCE
-            # ----------------------------------------------
+            # ==============================================
 
             if not field.source_line_ids:
 
                 flags.append(
-                    f"{field_name.upper()}"
-                    "_NO_EVIDENCE"
+                    (
+                        f"{field_name.upper()}"
+                        "_NO_EVIDENCE"
+                    )
                 )
+
 
                 continue
 
 
-            # ----------------------------------------------
-            # V1 — VALIDATE SOURCE LINE IDS
-            # ----------------------------------------------
+            # ==============================================
+            # V1 — INVALID SOURCE IDS
+            # ==============================================
 
             invalid_ids = [
 
@@ -493,8 +607,10 @@ class EvidenceValidator:
                 for line_id
                 in field.source_line_ids
 
-                if line_id
-                not in valid_line_ids
+                if (
+                    line_id
+                    not in valid_line_ids
+                )
             ]
 
 
@@ -503,78 +619,105 @@ class EvidenceValidator:
                 for line_id in invalid_ids:
 
                     flags.append(
-                        f"{field_name.upper()}"
-                        "_INVALID_SOURCE_LINE_ID:"
-                        f"{line_id}"
+                        (
+                            f"{field_name.upper()}"
+                            "_INVALID_SOURCE_LINE_ID:"
+                            f"{line_id}"
+                        )
                     )
 
-                # Cannot perform semantic validation
-                # if references themselves are invalid.
+
+                # Semantic validation cannot continue
+                # if source references are invalid.
                 continue
 
 
-            # ----------------------------------------------
-            # GATHER OCR EVIDENCE
-            # ----------------------------------------------
+            # ==============================================
+            # GATHER OCR EVIDENCE BY EXPLICIT LINE ID
+            # PHASE 7C.2
+            # ==============================================
 
             evidence_texts: list[str] = []
 
 
-            for line_id in field.source_line_ids:
+            for line_id in (
+                field.source_line_ids
+            ):
 
-                line_index = self._line_id_to_index(
-                    line_id
+                ocr_line = (
+                    ocr_lookup.get(
+                        line_id
+                    )
                 )
 
-                if line_index is None:
+
+                # This should normally be impossible because
+                # invalid IDs were already checked above.
+                # Keep the guard for defensive integrity.
+                if ocr_line is None:
 
                     flags.append(
-                        f"{field_name.upper()}"
-                        "_INVALID_SOURCE_LINE_ID:"
-                        f"{line_id}"
+                        (
+                            f"{field_name.upper()}"
+                            "_INVALID_SOURCE_LINE_ID:"
+                            f"{line_id}"
+                        )
                     )
+
 
                     continue
 
 
-                # Extra safety check
-                if not (
-                    0
-                    <= line_index
-                    < len(ocr_lines)
+                evidence_text = (
+                    ocr_line.get(
+                        "text"
+                    )
+                )
+
+
+                if not isinstance(
+                    evidence_text,
+                    str,
                 ):
 
                     flags.append(
-                        f"{field_name.upper()}"
-                        "_INVALID_SOURCE_LINE_ID:"
-                        f"{line_id}"
+                        (
+                            f"{field_name.upper()}"
+                            "_INVALID_EVIDENCE_TEXT:"
+                            f"{line_id}"
+                        )
                     )
+
 
                     continue
 
 
                 evidence_texts.append(
-                    ocr_lines[line_index]["text"]
+                    evidence_text
                 )
 
 
-            # If for any reason no valid evidence
-            # could be gathered, stop here.
             if not evidence_texts:
 
                 flags.append(
-                    f"{field_name.upper()}"
-                    "_NO_VALID_EVIDENCE"
+                    (
+                        f"{field_name.upper()}"
+                        "_NO_VALID_EVIDENCE"
+                    )
                 )
+
 
                 continue
 
 
-            # ----------------------------------------------
-            # V2 — DOES EVIDENCE SUPPORT VALUE?
-            # ----------------------------------------------
+            # ==============================================
+            # V2 — VALUE SUPPORT
+            # ==============================================
 
-            if field_name in self.DATE_FIELDS:
+            if (
+                field_name
+                in self.DATE_FIELDS
+            ):
 
                 value_supported = (
                     self._date_is_supported(
@@ -582,6 +725,7 @@ class EvidenceValidator:
                         evidence_texts,
                     )
                 )
+
 
             else:
 
@@ -596,16 +740,19 @@ class EvidenceValidator:
             if not value_supported:
 
                 flags.append(
-                    f"{field_name.upper()}"
-                    "_EVIDENCE_MISMATCH"
+                    (
+                        f"{field_name.upper()}"
+                        "_EVIDENCE_MISMATCH"
+                    )
                 )
+
 
                 continue
 
 
-            # ----------------------------------------------
-            # V2 — DOES EXPECTED CONTEXT EXIST?
-            # ----------------------------------------------
+            # ==============================================
+            # V2 — FIELD CONTEXT SUPPORT
+            # ==============================================
 
             context_supported = (
                 self._has_expected_context(
@@ -618,8 +765,10 @@ class EvidenceValidator:
             if not context_supported:
 
                 flags.append(
-                    f"{field_name.upper()}"
-                    "_CONTEXT_MISSING"
+                    (
+                        f"{field_name.upper()}"
+                        "_CONTEXT_MISSING"
+                    )
                 )
 
 
