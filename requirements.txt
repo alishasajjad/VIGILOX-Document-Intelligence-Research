@@ -1,0 +1,89 @@
+# ==========================================================
+# VIGILOX DOCUMENT INTELLIGENCE RESEARCH
+# DEPENDENCIES
+# ==========================================================
+#
+# Target Python version: 3.13.9
+#
+# This research repository contains the experimental history,
+# evaluation assets, tests, and a snapshot of the final
+# VIGILOX implementation.
+#
+# Create and activate a virtual environment:
+#
+#     python -m venv .venv
+#     .\.venv\Scripts\Activate.ps1
+#
+# Install:
+#
+#     python -m pip install --upgrade pip
+#     pip install -r requirements.txt
+#
+# ==========================================================
+
+
+# ----------------------------------------------------------
+# API
+# ----------------------------------------------------------
+
+fastapi==0.141.1
+starlette==1.6.0
+uvicorn==0.52.3
+
+# Multipart/form-data support for document uploads.
+python-multipart==0.0.32
+
+
+# ----------------------------------------------------------
+# VALIDATION & DATA MODELS
+# ----------------------------------------------------------
+
+pydantic==2.13.4
+
+
+# ----------------------------------------------------------
+# DATABASE & MIGRATIONS
+# ----------------------------------------------------------
+
+SQLAlchemy==2.0.52
+
+# PostgreSQL driver used with:
+# postgresql+psycopg://
+psycopg==3.3.4
+
+# Database schema migration support.
+alembic==1.17.2
+
+
+# ----------------------------------------------------------
+# OCR & IMAGE PROCESSING
+# ----------------------------------------------------------
+
+paddleocr==3.7.0
+paddlepaddle==3.3.1
+
+opencv-python==5.0.0.93
+numpy==2.3.5
+pillow==12.3.0
+
+
+# ----------------------------------------------------------
+# LLM / STRUCTURED EXTRACTION
+# ----------------------------------------------------------
+
+groq==1.6.0
+
+
+# ----------------------------------------------------------
+# ENVIRONMENT CONFIGURATION
+# ----------------------------------------------------------
+
+python-dotenv==1.2.2
+
+
+# ----------------------------------------------------------
+# API / TEST SUPPORT
+# ----------------------------------------------------------
+
+# Used by FastAPI / Starlette TestClient.
+httpx==0.28.1

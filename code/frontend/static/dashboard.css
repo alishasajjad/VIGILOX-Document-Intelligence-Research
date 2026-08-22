@@ -1,0 +1,53 @@
+/* ==========================================================
+   VIGILOX LEGACY STYLESHEET
+   RETIRED IN PHASE 8.15
+   ==========================================================
+
+   This file used to be the whole interface: 2,041 lines
+   covering the shell, the review queue, the document detail
+   screen and its own :root token block.
+
+   All of it is gone, in three steps.
+
+   PHASE 8.4
+   ----------------------------------------------------------
+   The :root token block and the shell rules moved out. Tokens
+   now have exactly one owner, css/tokens.css, and the shell
+   lives in css/layout.css.
+
+   That step also removed a real bug: this file hid the sidebar
+   entirely below 760px, which deleted every navigation link on
+   a phone. The shell reflows it instead.
+
+   PHASE 8.9 AND 8.10
+   ----------------------------------------------------------
+   The Review Queue and the document workspace were rebuilt on
+   the design system, so the ~1,900 remaining page rules had
+   nothing left to style. An audit at the end of Phase 8.15
+   found 100 of the 141 classes declared here had no reference
+   in any page or module at all, and the 41 that did were all
+   already covered by css/components.css or css/workspace.css.
+
+   Deleting dead rules is the point of the cleanup. Keeping
+   them "just in case" is how a stylesheet reaches 2,000 lines.
+
+
+   WHY THE FILE STILL EXISTS
+   ----------------------------------------------------------
+   /review/static/dashboard.css is a URL that shipped. Real
+   browsers have it cached and existing regression tests fetch
+   it by name, so it must keep resolving. Returning 404 for it
+   would break both for no benefit.
+
+   No page links it any more. If you are looking for the styles
+   that used to be here:
+
+       tokens        css/tokens.css
+       reset, type   css/base.css
+       shell, grid   css/layout.css
+       components    css/components.css
+       workspace     css/workspace.css
+       breakpoints   css/responsive.css
+
+   Do not add rules to this file.
+   ========================================================== */

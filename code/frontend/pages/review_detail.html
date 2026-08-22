@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Document Review · VIGILOX
+    </title>
+
+    <link
+        rel="icon"
+        type="image/svg+xml"
+        href="/review/static/favicon.svg"
+    />
+
+    <link
+        rel="alternate icon"
+        type="image/x-icon"
+        href="/review/static/favicon.ico"
+    />
+
+    <link
+        rel="apple-touch-icon"
+        href="/review/static/apple-touch-icon.png"
+    />
+
+    <link
+        rel="stylesheet"
+        href="/review/static/css/tokens.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="/review/static/css/base.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="/review/static/css/layout.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="/review/static/css/components.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="/review/static/css/workspace.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="/review/static/css/responsive.css"
+    >
+
+</head>
+
+
+<body>
+
+    <a class="skip-link" href="#main-content">
+        Skip to main content
+    </a>
+
+
+    <div class="app-shell">
+
+        <!-- ============================================= -->
+        <!-- SIDEBAR -->
+        <!-- ============================================= -->
+
+        <aside class="sidebar">
+
+            <div class="brand">
+
+                <div class="brand-mark" aria-hidden="true">
+                    V
+                </div>
+
+                <div>
+
+                    <div class="brand-name">
+                        VIGILOX
+                    </div>
+
+                    <div class="brand-subtitle">
+                        Document Intelligence
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <nav
+                class="navigation"
+                aria-label="Primary"
+            >
+
+                <p class="nav-section-label">
+                    Workspace
+                </p>
+
+                <a
+                    href="/dashboard"
+                    class="nav-item"
+                    data-nav-match="exact"
+                    data-nav-prefix="/dashboard"
+                >
+                    <span class="nav-item-label">Dashboard</span>
+                </a>
+
+                <a
+                    href="/upload"
+                    class="nav-item"
+                    data-nav-match="exact"
+                    data-nav-prefix="/upload"
+                >
+                    <span class="nav-item-label">Upload Document</span>
+                </a>
+
+                <a
+                    href="/documents"
+                    class="nav-item"
+                    data-nav-match="prefix"
+                    data-nav-prefix="/documents"
+                >
+                    <span class="nav-item-label">Documents</span>
+                </a>
+
+                <a
+                    href="/review"
+                    class="nav-item"
+                    data-nav-match="prefix"
+                    data-nav-prefix="/review"
+                    aria-current="page"
+                >
+                    <span class="nav-item-label">Review Queue</span>
+                </a>
+
+            </nav>
+
+
+            <div class="sidebar-footer">
+
+                <!-- ===================================== -->
+                <!-- REVIEWER IDENTITY                     -->
+                <!-- ===================================== -->
+                <!--
+                    Resolved by the server from
+                    GET /api/v1/reviewer/me.
+
+                    Read-only by design. There is no input
+                    here and the browser cannot choose or
+                    influence who the reviewer is.
+                -->
+
+                <div class="shell-reviewer">
+
+                    <div
+                        id="shell-reviewer-avatar"
+                        class="shell-reviewer-avatar"
+                        aria-hidden="true"
+                    >
+                        &hellip;
+                    </div>
+
+                    <div class="shell-reviewer-body">
+
+                        <div
+                            id="shell-reviewer-name"
+                            class="shell-reviewer-name"
+                        >
+                            Loading reviewer
+                        </div>
+
+                        <div class="shell-reviewer-meta">
+
+                            <span
+                                id="shell-reviewer-role"
+                                class="shell-reviewer-role"
+                            ></span>
+
+                            <span
+                                id="shell-reviewer-access"
+                                class="shell-reviewer-access"
+                            ></span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="system-status">
+
+                    <span
+                        id="status-indicator"
+                        class="status-dot"
+                        aria-hidden="true"
+                    ></span>
+
+                    <span
+                        id="status-text"
+                        role="status"
+                    >
+                        Checking API
+                    </span>
+
+                </div>
+
+            </div>
+
+        </aside>
+
+
+        <!-- ============================================= -->
+        <!-- MAIN -->
+        <!-- ============================================= -->
+
+        <main
+            id="main-content"
+            class="main-content"
+        >
+
+            <!-- ========================================= -->
+            <!-- LOADING -->
+            <!-- ========================================= -->
+
+            <div
+                id="detail-loading"
+                role="status"
+            ></div>
+
+
+            <!-- ========================================= -->
+            <!-- ERROR -->
+            <!-- ========================================= -->
+
+            <div
+                id="detail-error"
+                role="alert"
+                hidden
+            >
+
+                <div class="card">
+
+                    <div class="card-body">
+
+                        <div
+                            id="detail-error-message"
+                            role="alert"
+                        ></div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ========================================= -->
+            <!-- CONTENT -->
+            <!-- ========================================= -->
+
+            <div
+                id="detail-content"
+                hidden
+            >
+
+                <!-- ===================================== -->
+                <!-- DOCUMENT HEADER -->
+                <!-- ===================================== -->
+                <!--
+                    Status is answered here, before any JSON.
+                    Document type, final status, machine
+                    decision, expiry and review state are all
+                    on this line.
+                -->
+
+                <header class="page-header workspace-header">
+
+                    <div class="workspace-heading">
+
+                        <p class="eyebrow">
+                            DOCUMENT REVIEW
+                        </p>
+
+                        <h1 id="document-title">
+                            Loading document
+                        </h1>
+
+                        <p
+                            id="document-subtitle"
+                            class="page-description text-mono"
+                        ></p>
+
+                        <div
+                            id="document-badges"
+                            class="badge-stack workspace-badges"
+                        ></div>
+
+                    </div>
+
+
+                    <div class="header-actions">
+
+                        <a
+                            href="/review"
+                            class="btn btn-ghost"
+                        >
+                            Back to queue
+                        </a>
+
+                        <button
+                            type="button"
+                            id="copy-json-button"
+                            class="btn btn-secondary"
+                        >
+                            Copy JSON
+                        </button>
+
+                        <button
+                            type="button"
+                            id="download-json-button"
+                            class="btn btn-secondary"
+                        >
+                            Download JSON
+                        </button>
+
+                    </div>
+
+                </header>
+
+
+                <p
+                    id="workspace-status"
+                    class="status-message"
+                    role="status"
+                    aria-live="polite"
+                ></p>
+
+
+                <div class="workspace">
+
+                    <!-- ================================= -->
+                    <!-- LEFT: SOURCE DOCUMENT -->
+                    <!-- ================================= -->
+                    <!--
+                        Sticky on desktop, so the original
+                        stays visible while the reviewer reads
+                        down the extracted values.
+                    -->
+
+                    <div class="workspace-source">
+
+                        <section
+                            class="card"
+                            aria-labelledby="source-title"
+                        >
+
+                            <div class="card-head">
+
+                                <h2
+                                    id="source-title"
+                                    class="card-title"
+                                >
+                                    Original document
+                                </h2>
+
+                                <div class="card-head-actions">
+
+                                    <!--
+                                        An explicit for=, not
+                                        just a wrapping label.
+                                        The association is then
+                                        stated rather than
+                                        inferred from nesting.
+                                    -->
+
+                                    <label
+                                        class="switch"
+                                        for="highlight-toggle"
+                                    >
+
+                                        <input
+                                            type="checkbox"
+                                            id="highlight-toggle"
+                                            checked
+                                        >
+
+                                        <span class="switch-label">
+                                            Show evidence
+                                        </span>
+
+                                    </label>
+
+                                </div>
+
+                            </div>
+
+
+                            <div class="card-body">
+
+                                <!--
+                                    The overlay is positioned
+                                    against the rendered image
+                                    box and scaled from the
+                                    image's own intrinsic size,
+                                    so the boxes stay aligned
+                                    at any display width.
+                                -->
+
+                                <div
+                                    id="document-preview"
+                                    class="source-frame"
+                                >
+
+                                    <img
+                                        id="original-document-image"
+                                        class="source-image"
+                                        alt="The original uploaded document"
+                                        hidden
+                                    >
+
+                                    <div
+                                        id="evidence-overlay"
+                                        class="evidence-overlay"
+                                        aria-hidden="true"
+                                    ></div>
+
+                                </div>
+
+
+                                <div
+                                    id="image-unavailable"
+                                    hidden
+                                ></div>
+
+
+                                <p
+                                    id="source-caption"
+                                    class="field-hint"
+                                ></p>
+
+                            </div>
+
+                        </section>
+
+
+                        <section
+                            class="card workspace-facts"
+                            aria-labelledby="facts-title"
+                        >
+
+                            <div class="card-head">
+
+                                <h2
+                                    id="facts-title"
+                                    class="card-title"
+                                >
+                                    Document details
+                                </h2>
+
+                            </div>
+
+                            <div class="card-body card-body-flush">
+
+                                <div id="document-facts"></div>
+
+                            </div>
+
+                        </section>
+
+                    </div>
+
+
+                    <!-- ================================= -->
+                    <!-- RIGHT: INTELLIGENCE -->
+                    <!-- ================================= -->
+
+                    <div class="workspace-detail">
+
+                        <!-- ============================= -->
+                        <!-- OVERVIEW -->
+                        <!-- ============================= -->
+                        <!--
+                            Always visible. The reviewer should
+                            not have to open anything to learn
+                            where the document stands.
+                        -->
+
+                        <section
+                            class="card"
+                            aria-labelledby="overview-title"
+                        >
+
+                            <div class="card-head">
+
+                                <h2
+                                    id="overview-title"
+                                    class="card-title"
+                                >
+                                    Overview
+                                </h2>
+
+                            </div>
+
+                            <div class="card-body">
+
+                                <div id="overview-panel"></div>
+
+                            </div>
+
+                        </section>
+
+
+                        <!-- ============================= -->
+                        <!-- HUMAN REVIEW -->
+                        <!-- ============================= -->
+                        <!--
+                            The action a reviewer came here to
+                            take stays above the detail tabs
+                            rather than hidden behind one.
+                        -->
+
+                        <section
+                            id="human-review-panel"
+                            class="card"
+                            aria-labelledby="human-review-title"
+                        >
+
+                            <div class="card-head">
+
+                                <h2
+                                    id="human-review-title"
+                                    class="card-title"
+                                >
+                                    Human Review
+                                </h2>
+
+                            </div>
+
+
+                            <div class="card-body">
+
+                                <p
+                                    id="review-message"
+                                    class="status-message"
+                                    role="status"
+                                    aria-live="polite"
+                                ></p>
+
+
+                                <!-- ===================== -->
+                                <!-- COMPLETED REVIEW -->
+                                <!-- ===================== -->
+
+                                <div
+                                    id="completed-review-summary"
+                                    hidden
+                                >
+
+                                    <div class="detail-rows">
+
+                                        <div class="detail-row">
+
+                                            <span class="detail-label">
+                                                Decision
+                                            </span>
+
+                                            <span
+                                                id="completed-review-action"
+                                                class="detail-value"
+                                            ></span>
+
+                                        </div>
+
+                                        <div class="detail-row">
+
+                                            <span class="detail-label">
+                                                Reviewer
+                                            </span>
+
+                                            <span
+                                                id="completed-reviewer"
+                                                class="detail-value"
+                                            ></span>
+
+                                        </div>
+
+                                        <div class="detail-row">
+
+                                            <span class="detail-label">
+                                                Reviewed
+                                            </span>
+
+                                            <span
+                                                id="completed-reviewed-at"
+                                                class="detail-value"
+                                            ></span>
+
+                                        </div>
+
+                                        <div class="detail-row">
+
+                                            <span class="detail-label">
+                                                Notes
+                                            </span>
+
+                                            <span
+                                                id="completed-review-notes"
+                                                class="detail-value"
+                                            ></span>
+
+                                        </div>
+
+                                    </div>
+
+
+                                    <div
+                                        id="completed-review-corrections"
+                                        class="completed-corrections"
+                                    ></div>
+
+                                </div>
+
+
+                                <!-- ===================== -->
+                                <!-- LOCKED -->
+                                <!-- ===================== -->
+
+                                <div
+                                    id="review-locked-message"
+                                    hidden
+                                ></div>
+
+
+                                <!-- ===================== -->
+                                <!-- AUTHENTICATED REVIEWER -->
+                                <!-- ===================== -->
+                                <!--
+                                    Read-only. Resolved by the
+                                    server. There is no input
+                                    for it anywhere on this
+                                    page.
+                                -->
+
+                                <div
+                                    id="authenticated-reviewer-section"
+                                    hidden
+                                >
+
+                                    <div
+                                        id="authenticated-reviewer-card"
+                                        class="reviewer-card"
+                                    >
+
+                                        <div
+                                            id="authenticated-reviewer-loading"
+                                            class="reviewer-card-loading"
+                                        >
+                                            Resolving reviewer identity&hellip;
+                                        </div>
+
+                                        <div
+                                            id="authenticated-reviewer-content"
+                                            hidden
+                                        >
+
+                                            <div class="reviewer-card-head">
+
+                                                <span
+                                                    id="authenticated-reviewer-name"
+                                                    class="reviewer-card-name"
+                                                ></span>
+
+                                                <span
+                                                    id="authenticated-reviewer-access"
+                                                    class="reviewer-access-badge"
+                                                ></span>
+
+                                            </div>
+
+                                            <div class="reviewer-card-meta">
+
+                                                <span>
+                                                    Role:
+                                                    <span
+                                                        id="authenticated-reviewer-role"
+                                                    ></span>
+                                                </span>
+
+                                                <span>
+                                                    Verified by:
+                                                    <span
+                                                        id="authenticated-reviewer-source"
+                                                    ></span>
+                                                </span>
+
+                                            </div>
+
+                                        </div>
+
+                                        <div
+                                            id="authenticated-reviewer-error"
+                                            class="reviewer-card-error"
+                                            hidden
+                                        ></div>
+
+                                    </div>
+
+                                </div>
+
+
+                                <!-- ===================== -->
+                                <!-- REVIEW FORM -->
+                                <!-- ===================== -->
+
+                                <div
+                                    id="human-review-form"
+                                    hidden
+                                >
+
+                                    <div class="field">
+
+                                        <label
+                                            class="field-label"
+                                            for="review-notes"
+                                        >
+                                            Reviewer notes
+                                        </label>
+
+                                        <textarea
+                                            id="review-notes"
+                                            class="textarea"
+                                            rows="3"
+                                            maxlength="2000"
+                                            aria-describedby="review-notes-hint"
+                                        ></textarea>
+
+                                        <p
+                                            id="review-notes-hint"
+                                            class="field-hint"
+                                        >
+                                            Optional. Recorded in the
+                                            audit history against your
+                                            decision.
+                                        </p>
+
+                                    </div>
+
+
+                                    <!-- ================= -->
+                                    <!-- CORRECTIONS -->
+                                    <!-- ================= -->
+                                    <!--
+                                        Only the fields the
+                                        backend accepts are
+                                        editable. There is no
+                                        free-form JSON editor.
+                                    -->
+
+                                    <div
+                                        id="correction-panel"
+                                        hidden
+                                    >
+
+                                        <div class="correction-head">
+
+                                            <h3 class="correction-title">
+                                                Correct extracted values
+                                            </h3>
+
+                                            <button
+                                                type="button"
+                                                id="cancel-correction-button"
+                                                class="btn btn-ghost btn-sm"
+                                            >
+                                                Cancel
+                                            </button>
+
+                                        </div>
+
+                                        <p class="field-hint">
+                                            The machine reading is kept.
+                                            Your correction is recorded
+                                            beside it and becomes the
+                                            effective value.
+                                        </p>
+
+                                        <div
+                                            id="correction-fields"
+                                            class="correction-fields"
+                                        ></div>
+
+                                    </div>
+
+
+                                    <div class="review-actions">
+
+                                        <button
+                                            type="button"
+                                            id="approve-button"
+                                            class="btn btn-primary"
+                                        >
+                                            Approve
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            id="correct-button"
+                                            class="btn btn-secondary"
+                                        >
+                                            Correct
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            id="submit-correction-button"
+                                            class="btn btn-primary"
+                                            hidden
+                                        >
+                                            Submit Corrections
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            id="reject-button"
+                                            class="btn btn-danger"
+                                        >
+                                            Reject
+                                        </button>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </section>
+
+
+                        <!-- ============================= -->
+                        <!-- DETAIL TABS -->
+                        <!-- ============================= -->
+                        <!--
+                            Tabs rather than a long scroll.
+
+                            The reviewer needs one of these at
+                            a time, and stacking all six would
+                            push the source document out of
+                            view on a laptop.
+
+                            Raw data is the last tab, never the
+                            default: it is a debugging aid, not
+                            the product.
+                        -->
+
+                        <section
+                            class="card"
+                            aria-labelledby="detail-tabs-title"
+                        >
+
+                            <h2
+                                id="detail-tabs-title"
+                                class="visually-hidden"
+                            >
+                                Document intelligence
+                            </h2>
+
+                            <div
+                                id="workspace-tablist"
+                                class="tablist"
+                                role="tablist"
+                                aria-label="Document intelligence"
+                            >
+
+                                <button
+                                    type="button"
+                                    id="tab-fields"
+                                    class="tab"
+                                    role="tab"
+                                    aria-selected="true"
+                                    aria-controls="panel-fields"
+                                >
+                                    Extracted Data
+                                </button>
+
+                                <button
+                                    type="button"
+                                    id="tab-validation"
+                                    class="tab"
+                                    role="tab"
+                                    aria-selected="false"
+                                    aria-controls="panel-validation"
+                                    tabindex="-1"
+                                >
+                                    Validation
+                                </button>
+
+                                <button
+                                    type="button"
+                                    id="tab-anomalies"
+                                    class="tab"
+                                    role="tab"
+                                    aria-selected="false"
+                                    aria-controls="panel-anomalies"
+                                    tabindex="-1"
+                                >
+                                    Findings
+                                </button>
+
+                                <button
+                                    type="button"
+                                    id="tab-result"
+                                    class="tab"
+                                    role="tab"
+                                    aria-selected="false"
+                                    aria-controls="panel-result"
+                                    tabindex="-1"
+                                >
+                                    Final Record
+                                </button>
+
+                                <button
+                                    type="button"
+                                    id="tab-history"
+                                    class="tab"
+                                    role="tab"
+                                    aria-selected="false"
+                                    aria-controls="panel-history"
+                                    tabindex="-1"
+                                >
+                                    History
+                                </button>
+
+                                <button
+                                    type="button"
+                                    id="tab-raw"
+                                    class="tab"
+                                    role="tab"
+                                    aria-selected="false"
+                                    aria-controls="panel-raw"
+                                    tabindex="-1"
+                                >
+                                    Technical Data
+                                </button>
+
+                            </div>
+
+
+                            <div class="card-body">
+
+                                <div
+                                    id="panel-fields"
+                                    role="tabpanel"
+                                    aria-labelledby="tab-fields"
+                                    tabindex="0"
+                                >
+
+                                    <div id="extraction-fields"></div>
+
+                                </div>
+
+
+                                <div
+                                    id="panel-validation"
+                                    role="tabpanel"
+                                    aria-labelledby="tab-validation"
+                                    tabindex="0"
+                                    hidden
+                                >
+
+                                    <div id="validation-content"></div>
+
+                                </div>
+
+
+                                <div
+                                    id="panel-anomalies"
+                                    role="tabpanel"
+                                    aria-labelledby="tab-anomalies"
+                                    tabindex="0"
+                                    hidden
+                                >
+
+                                    <div id="anomaly-list"></div>
+
+                                </div>
+
+
+                                <div
+                                    id="panel-result"
+                                    role="tabpanel"
+                                    aria-labelledby="tab-result"
+                                    tabindex="0"
+                                    hidden
+                                >
+
+                                    <div id="final-record"></div>
+
+                                    <div id="effective-values"></div>
+
+                                </div>
+
+
+                                <div
+                                    id="panel-history"
+                                    role="tabpanel"
+                                    aria-labelledby="tab-history"
+                                    tabindex="0"
+                                    hidden
+                                >
+
+                                    <div id="review-history-list"></div>
+
+                                </div>
+
+
+                                <div
+                                    id="panel-raw"
+                                    role="tabpanel"
+                                    aria-labelledby="tab-raw"
+                                    tabindex="0"
+                                    hidden
+                                >
+
+                                    <div id="raw-data"></div>
+
+                                </div>
+
+                            </div>
+
+                        </section>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </main>
+
+    </div>
+
+
+    <!-- ============================================= -->
+    <!-- CONFIRMATION DIALOG -->
+    <!-- ============================================= -->
+    <!--
+        A native <dialog>, so focus containment, Escape and
+        the backdrop come from the platform rather than from
+        hand-written key handling on a div.
+    -->
+
+    <dialog
+        id="confirm-dialog"
+        class="dialog"
+        aria-labelledby="confirm-title"
+        aria-describedby="confirm-body"
+    >
+
+        <div class="dialog-head">
+
+            <h2
+                id="confirm-title"
+                class="dialog-title"
+            ></h2>
+
+        </div>
+
+        <div
+            id="confirm-body"
+            class="dialog-body"
+        ></div>
+
+        <div class="dialog-foot">
+
+            <button
+                type="button"
+                id="confirm-cancel"
+                class="btn btn-secondary"
+            >
+                Cancel
+            </button>
+
+            <button
+                type="button"
+                id="confirm-accept"
+                class="btn btn-primary"
+            ></button>
+
+        </div>
+
+    </dialog>
+
+
+    <script
+        src="/review/static/js/api.js"
+    ></script>
+
+    <script
+        src="/review/static/js/common.js"
+    ></script>
+
+    <script
+        src="/review/static/js/vocabulary.js"
+    ></script>
+
+    <script
+        src="/review/static/js/workspace/tabs.js"
+    ></script>
+
+    <script
+        src="/review/static/js/workspace/source_panel.js"
+    ></script>
+
+    <script
+        src="/review/static/js/workspace/fields_view.js"
+    ></script>
+
+    <script
+        src="/review/static/js/workspace/validation_view.js"
+    ></script>
+
+    <script
+        src="/review/static/js/workspace/result_view.js"
+    ></script>
+
+    <script
+        src="/review/static/js/workspace/review_actions.js"
+    ></script>
+
+    <script
+        src="/review/static/review_detail.js"
+    ></script>
+
+</body>
+
+</html>
