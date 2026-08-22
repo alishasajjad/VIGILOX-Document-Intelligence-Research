@@ -815,6 +815,25 @@ Historical evaluation artifacts retained for comparison.
 
 ---
 
+### Precision, Recall and F1 Evaluation
+
+The final structured extraction evaluation was performed on **63 labeled documents** covering guard licenses, ID cards, and SIA badges.
+
+| Metric | Score |
+|---|---:|
+| Normalized Precision | **98.49%** |
+| Normalized Recall | **98.49%** |
+| Normalized F1 Score | **98.49%** |
+| Exact Precision | 94.88% |
+| Exact Recall | 94.88% |
+| Exact F1 Score | 94.88% |
+
+The normalized evaluation measures semantic field-value correctness while ignoring benign formatting differences such as capitalization, punctuation, and spacing.
+
+See the complete report at [`evaluation/reports/precision_recall_report.md`](evaluation/reports/precision_recall_report.md).
+
+---
+
 # Evaluation Methodology
 
 The evaluation framework examines metrics including:
