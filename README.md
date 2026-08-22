@@ -20,6 +20,7 @@
 
 [Overview](#overview) •
 [Research Goals](#research-goals) •
+[Production Repository](https://github.com/alishasajjad/VIGILOX-Document-Intelligence) •
 [Phases](#research--development-phases) •
 [Architecture](#system-evolution) •
 [Evaluation](#evaluation) •
@@ -115,6 +116,16 @@ This included:
 - release verification
 
 ---
+
+## 🚀 Production Repository
+
+This repository preserves the research, experiments, evaluation methodology, engineering decisions, and phase-by-phase evolution behind VIGILOX.
+
+For the main implementation and current application repository, visit:
+
+**[VIGILOX Document Intelligence](https://github.com/alishasajjad/VIGILOX-Document-Intelligence)**
+
+--- 
 
 # Core Research Questions
 
